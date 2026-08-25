@@ -31,5 +31,24 @@ class KBContextAgent:
         parts = []
         for concept in all_concepts:
             desc = f"{concept.description}\n\n" if concept.description else ""
-            parts.append(f"### {concept.title} ({concept.concept_id})\n{desc}{concept.body}")
+            name_line = ""
+            table_name = KBContextAgent._sql_table_name(concept)
+            if table_name:
+                name_line = f"SQL table name: `{table_name}`\n\n"
+            parts.append(
+                f"### {concept.title} ({concept.concept_id})\n{name_line}{desc}{concept.body}"
+            )
         return "\n\n---\n\n".join(parts)
+
+    @staticmethod
+    def _sql_table_name(concept: Concept) -> str:
+        """Extracts the literal SQL table name from a Table concept's `resource`
+        URI (e.g. mysql://host:port/db/customers -> customers, or
+        postgresql://host:port/db/public.customers -> customers) — the display
+        `title` is human-readable and may not match the real casing. Any schema
+        qualifier (e.g. `public.`) on the last path segment is dropped since the
+        service targets MySQL, which has no schema concept."""
+        if concept.concept_type != "Table" or not concept.resource:
+            return ""
+        last_segment = concept.resource.rsplit("/", 1)[-1]
+        return last_segment.rsplit(".", 1)[-1]
